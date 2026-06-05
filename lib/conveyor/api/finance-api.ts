@@ -10,4 +10,7 @@ export class FinanceApi extends ConveyorApi {
   
   getAccounts = () => this.invoke('finance-get-accounts')
   addAccount = (acc: Omit<Account, 'id' | 'balance'>) => this.invoke('finance-add-account', acc)
+
+  exportExcel = () => this.invoke('finance-export-excel')
+  importExcel = () => this.invoke('finance-import-excel')
 }

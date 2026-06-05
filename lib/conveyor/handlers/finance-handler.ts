@@ -4,6 +4,9 @@ import { app } from 'electron'
 import path from 'path'
 import type { Transaction, Account } from '../schemas/finance-schema'
 
+import { dialog, BrowserWindow } from 'electron'
+import * as xlsx from 'xlsx'
+
 const dbPath = path.join(app.getPath('userData'), 'finance_v2.db') // تغییر نام برای جلوگیری از تداخل
 const db = new Database(dbPath)
 
@@ -96,5 +99,101 @@ export const registerFinanceHandlers = () => {
       person_name: r.person_name, total_lent: r.total_lent, total_borrowed: r.total_borrowed,
       balance: r.total_lent - r.total_borrowed
     }))
+  })
+
+  handle('finance-export-excel', async () => {
+    try {
+      // ۱. گرفتن تمام تراکنش‌ها به همراه نام حساب‌ها
+      const transactions = db.prepare(`
+        SELECT t.id, t.type, t.amount, t.date, t.person_name, t.note, t.due_date,
+               a1.name as account_name, a2.name as to_account_name
+        FROM transactions t
+        LEFT JOIN accounts a1 ON t.account_id = a1.id
+        LEFT JOIN accounts a2 ON t.to_account_id = a2.id
+        ORDER BY t.id DESC
+      `).all()
+
+      if (transactions.length === 0) return { success: false, message: 'هیچ تراکنشی برای خروجی گرفتن وجود ندارد' }
+
+      // ۲. تبدیل به شیت اکسل
+      const worksheet = xlsx.utils.json_to_sheet(transactions)
+      const workbook = xlsx.utils.book_new()
+      xlsx.utils.book_append_sheet(workbook, worksheet, "Transactions")
+
+      // ۳. باز کردن پنجره ذخیره فایل سیستم‌عامل
+      const win = BrowserWindow.getFocusedWindow()
+      const { canceled, filePath } = await dialog.showSaveDialog(win!, {
+        title: 'ذخیره فایل اکسل',
+        defaultPath: `GriffinCash_Export_${new Date().getTime()}.xlsx`,
+        filters: [{ name: 'Excel Files', extensions: ['xlsx'] }]
+      })
+
+      if (canceled || !filePath) return { success: false, message: 'عملیات لغو شد' }
+
+      // ۴. نوشتن فایل
+      xlsx.writeFile(workbook, filePath)
+      return { success: true, message: 'فایل با موفقیت ذخیره شد' }
+    } catch (error: any) {
+      return { success: false, message: `خطا: ${error.message}` }
+    }
+  })
+
+
+  handle('finance-import-excel', async () => {
+    try {
+      // ۱. باز کردن پنجره انتخاب فایل
+      const win = BrowserWindow.getFocusedWindow()
+      const { canceled, filePaths } = await dialog.showOpenDialog(win!, {
+        title: 'ورود اطلاعات از اکسل',
+        filters: [{ name: 'Excel Files', extensions: ['xlsx', 'xls'] }],
+        properties: ['openFile']
+      })
+
+      if (canceled || filePaths.length === 0) return { success: false, message: 'عملیات لغو شد' }
+
+      // ۲. خواندن فایل اکسل
+      const workbook = xlsx.readFile(filePaths[0])
+      const sheetName = workbook.SheetNames[0]
+      const data: any[] = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName])
+
+      if (!data || data.length === 0) return { success: false, message: 'فایل خالی است' }
+
+      // ۳. پیدا کردن یک حساب پیش‌فرض (چون در اکسل ممکنه آیدی حساب‌ها مشخص نباشه)
+      let defaultAcc = db.prepare("SELECT id FROM accounts LIMIT 1").get() as any
+      if (!defaultAcc) {
+         const res = db.prepare("INSERT INTO accounts (name, type) VALUES ('حساب پیش‌فرض ایمپورت', 'fiat')").run()
+         defaultAcc = { id: res.lastInsertRowid }
+      }
+
+      // ۴. ثبت گروهی در دیتابیس (با استفاده از Transaction برای سرعت بالا)
+      const insertTx = db.prepare(`
+        INSERT INTO transactions (type, amount, person_name, note, date, due_date, account_id)
+        VALUES (@type, @amount, @person_name, @note, @date, @due_date, @account_id)
+      `)
+
+      let count = 0
+      const runMany = db.transaction((rows) => {
+        for (const row of rows) {
+          // فقط در صورتی که مبلغ معتبر باشد ذخیره می‌کنیم
+          if (row.amount && !isNaN(Number(row.amount))) {
+            insertTx.run({
+              type: row.type || 'expense',
+              amount: Number(row.amount),
+              person_name: row.person_name || null,
+              note: row.note || null,
+              date: row.date || new Date().toLocaleDateString('fa-IR'),
+              due_date: row.due_date || null,
+              account_id: defaultAcc.id
+            })
+            count++
+          }
+        }
+      })
+
+      runMany(data)
+      return { success: true, message: `تعداد ${count} تراکنش با موفقیت وارد شد`, count }
+    } catch (error: any) {
+      return { success: false, message: `خطا در خواندن فایل: ${error.message}` }
+    }
   })
 }

@@ -46,4 +46,14 @@ export const financeIpcSchema = {
   // روت‌های مربوط به حساب‌های مالی
   'finance-get-accounts': { args: z.tuple([]), return: z.array(AccountSchema) },
   'finance-add-account': { args: z.tuple([AccountSchema.omit({ id: true, balance: true })]), return: z.void() },
+
+  // اضافه کردن مسیرهای ایمپورت و اکسپورت
+'finance-export-excel': { 
+  args: z.tuple([]), 
+  return: z.object({ success: z.boolean(), message: z.string() }) 
+},
+'finance-import-excel': { 
+  args: z.tuple([]), 
+  return: z.object({ success: z.boolean(), message: z.string(), count: z.number().optional() }) 
+},
 }

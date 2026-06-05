@@ -38,6 +38,12 @@ export function useFinance() {
     updateTx: async (tx: Transaction) => { await api.updateTransaction(tx); loadData() },
     deleteTx: async (id: number) => { await api.deleteTransaction(id); loadData() },
     addAccount: async (acc: Omit<Account, 'id' | 'balance'>) => { await api.addAccount(acc); loadData() },
-    refresh: loadData
+    refresh: loadData,
+    
+    // اضافه شدن توابع اکسل
+    exportExcel: async () => { return await api.exportExcel() },
+    importExcel: async () => { 
+      const res = await api.importExcel()
+      if (res.success) loadData() // اگر موفق بود، UI را رفرش کن
+      return res}}
   }
-}

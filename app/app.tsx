@@ -15,12 +15,16 @@ import {
   BankIcon,
   SquaresFourIcon,
   UsersIcon,
-  UserCircleIcon
+  UserCircleIcon,
+  DownloadSimple,
+  UploadSimple,
+  DownloadSimpleIcon,
+  UploadSimpleIcon
 } from '@phosphor-icons/react'
 import './styles/app.css'
 
 export default function App() {
-  const { transactions, persons, accounts, summary, addTx, updateTx, deleteTx, addAccount } = useFinance()
+  const { transactions, persons, accounts, summary, addTx, updateTx, deleteTx, addAccount , exportExcel , importExcel } = useFinance()
   const [activeTab, setActiveTab] = useState<'dashboard' | 'persons' | 'accounts'>('dashboard')
   
   const [editId, setEditId] = useState<number | null>(null)
@@ -149,7 +153,36 @@ export default function App() {
 
         {/* --- VIEW: DASHBOARD --- */}
         {activeTab === 'dashboard' && (
+
+          
           <div className="animate-in fade-in duration-300">
+
+
+    <div className="flex justify-between items-end mb-6">
+      <h2 className="text-2xl font-bold">نمای کلی تراکنش‌ها</h2>
+      <div className="flex gap-2">
+        <button 
+          onClick={async () => {
+            const res = await importExcel();
+            alert(res.message);
+          }}
+          className="flex items-center gap-2 bg-card border border-border px-4 py-2 rounded-lg hover:bg-accent transition-colors text-sm"
+        >
+          <UploadSimpleIcon className="text-lg" /> ورود از اکسل
+        </button>
+        
+        <button 
+          onClick={async () => {
+            const res = await exportExcel();
+            alert(res.message);
+          }}
+          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm"
+        >
+          <DownloadSimpleIcon className="text-lg" /> خروجی اکسل
+        </button>
+      </div>
+    </div>
+
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
               <div className="bg-blue-600 text-white rounded-xl p-5 shadow-lg flex flex-col justify-between">
                 <p className="text-blue-100 mb-1">موجودی کل حساب‌ها</p>
