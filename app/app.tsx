@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useFinance } from './hooks/useFinance'
 import type { Transaction, Account } from '@/lib/conveyor/schemas/finance-schema'
+import { numberToWords } from '@persian-tools/persian-tools'
 import {
   Wallet, SquaresFour, Users, ArrowUpRight, ArrowDownLeft, 
   ShoppingCart, PlusCircle, Trash, PencilSimple, UserCircle,
@@ -235,8 +236,33 @@ export default function App() {
                         )}
                       </div>
 
-                      <input type="number" required placeholder="مبلغ (تومان/واحد)" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="w-full bg-background border border-border rounded-lg p-2.5" />
-                      
+
+<div>
+  <input 
+    type="number" 
+    required 
+    placeholder="مبلغ (تومان)" 
+    value={formData.amount} 
+    onChange={e => setFormData({...formData, amount: e.target.value})} 
+    className="w-full bg-background border border-border rounded-lg p-2.5 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" 
+  />
+  
+  {/* بخش نمایش عدد به حروف و فرمت‌شده */}
+  {formData.amount && !isNaN(Number(formData.amount)) && (
+    <div className="text-xs mt-1.5 px-1 flex flex-wrap items-center gap-1.5 animate-in fade-in duration-200">
+      <span className="font-bold text-blue-600 dark:text-blue-400" dir="ltr">
+        {Number(formData.amount).toLocaleString('fa-IR')}
+      </span>
+      <span className="text-muted-foreground">تومان</span>
+      <span className="text-muted-foreground opacity-50 px-1">|</span>
+      <span className="text-muted-foreground font-medium">
+  {numberToWords(formData.amount) as string} تومان
+</span>
+    </div>
+  )}
+</div>
+
+
                       {formData.type !== 'transfer' && (
                         <input type="text" placeholder="نام شخص یا موضوع" value={formData.person_name} onChange={e => setFormData({...formData, person_name: e.target.value})} className="w-full bg-background border border-border rounded-lg p-2.5" />
                       )}
